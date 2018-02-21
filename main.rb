@@ -26,7 +26,7 @@ require 'tempfile'
 R /^-win32const\s+(\w+)$/ do |match:, qq:, **|
   next unless P.user_has_privilege(qq, 'eval')
   Tempfile.open(['a-', '.c'], 'tmp') do |f|
-    f.write "#include<windows.h>\n#include<d3d11.h>\nmain(){printf(\"0x%08x\",#{match[1]});}"
+    f.write "#define S(s) X(s)\n#define X(s) #s\n#include<windows.h>\n#include<d3d11.h>\nmain(){puts(("" S(#{match[1]})));}"
     f.close
     Tempfile.open(['a-', '.exe'], 'tmp') do |o|
       o.close
