@@ -12,18 +12,20 @@ def T(input)
 end
 
 :eval
-# /deqrcode [pic]
-require 'mechanize'
-require 'nokogiri'
-R /\/deqrcode\s+\[CQ:image,file=(.+?)\]/ do |match:, **|
-  begin
-    D { Nokogiri::HTML(Mechanize.new.get('https://zxing.org/w/decode.jspx').form_with(method: 'GET'){ |c| c.fields.first.value = File.read("data/image/#{match[1]}.cqimg")[/^url=(.*)$/, 1] }.submit.body).css('#result pre').first.text }
-  rescue
-    $@.unshift($!).join $/
+# -win32const name
+require 'tempfile'
+R /^-win32const\s*?(\w+)$/ do |match:, **|
+  Tempfile.open(['a-', '.c'], 'tmp') do |f|
+    f.write "#include<windows.h>\nmain(){printf(\"%x\",#{match[1].upcase});}"
+    f.close
+    Tempfile.open(['a-', '.exe'], 'tmp') do |o|
+      o.close
+      raw = `2>&1 gcc -w -O -m32 #{f.path.inspect} -o #{o.path.inspect} && #{o.path.inspect}`.encode("UTF-8", "GBK", replace: '?', invalid: :replace, undef: :replace, fallback: '?').chomp("\n")
+      raw
+    end
   end
 end
 
-# T <<-EOS
-# -disasm
-# void f(){ putchar(42); }
-# EOS
+T <<-EOS
+-win32const MB_OK
+EOS
