@@ -23,7 +23,7 @@ end
 
 # -win32const name
 require 'tempfile'
-R /^-win32const\s+(\w+)$/ do |match:, **|
+R /^-win32const\s+(\w+)$/ do |match:, qq: **|
   next unless P.user_has_privilege(qq, 'eval')
   x = LocalStorage.get("glob", ["cache", "win32const", match[1]])
   next x if x
