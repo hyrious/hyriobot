@@ -7,4 +7,4 @@ example see [testrobot](https://github.com/RGSS3/testrobot)
 ## Contents
 - `-disasm add(a,b){return a+b;}`
 - `/deqrcode [pic]`
-- `-win32const name`
+- `-win32const name [header]`

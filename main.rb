@@ -23,12 +23,13 @@ end
 
 # -win32const name
 require 'tempfile'
-R /^-win32const\s+(\w+)$/ do |match:, qq:, **|
+R /^-win32const\s+(\S+)(?:\s+(\S+))?$/ do |match:, qq:, **|
   next unless P.user_has_privilege(qq, 'eval')
   x = LocalStorage.get("glob", ["cache", "win32const", match[1]])
   next x if x
   D {
     Tempfile.open(['a-', '.cpp'], 'tmp') do |f|
+      f.write "#include<#{match[2]}>\n" if match[2]
       f.write "#define S(s) X(s)\n#define X(s) #s\n#include<windows.h>\n#include<d3d11.h>\n#include<bits/stdc++.h>\nint main(){puts(("" S(#{match[1]})));}"
       f.close
       Tempfile.open(['a-', '.exe'], 'tmp') do |o|
