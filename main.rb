@@ -15,11 +15,11 @@ R /^-disasm\s+(.+)$/m do |match:, **|
 end
 
 # /deqrcode [pic]
+require 'cgi'
 require 'http'
 require 'nokogiri'
-Process::RLIMIT_NOFILE = 7 if Gem.win_platform?
 R /\/deqrcode\s+\[CQ:image,file=(.+?)\]/ do |match:, **|
-  D { Nokogiri::HTML(HTTP.post('https://zxing.org/w/decode.jspx', form: { u: File.read("data/image/#{match[1]}.cqimg")[/^url=(.*)$/, 1] }).to_s).css('#result pre').first.text }
+  D { Nokogiri::HTML(HTTP[:referer => 'https://zxing.org/w/decode.jspx'].get("https://zxing.org/w/decode?u=#{CGI.escape(File.read("data/image/#{match[1]}.cqimg")[/^url=(.*)$/, 1])}").to_s).css('#result pre').first.text }
 end
 
 # -win32const name
