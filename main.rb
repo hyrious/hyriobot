@@ -17,6 +17,7 @@ end
 # /deqrcode [pic]
 require 'mechanize'
 require 'nokogiri'
+Process::RLIMIT_NOFILE = 7 if Gem.win_platform?
 R /\/deqrcode\s+\[CQ:image,file=(.+?)\]/ do |match:, **|
   D { Nokogiri::HTML(Mechanize.new.get('https://zxing.org/w/decode.jspx').form_with(method: 'GET'){ |c| c.fields.first.value = File.read("data/image/#{match[1]}.cqimg")[/^url=(.*)$/, 1] }.submit.body).css('#result pre').first.text }
 end
