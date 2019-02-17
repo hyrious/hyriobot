@@ -1,17 +1,24 @@
 # -disasm add(a,b){return a+b;}
-# @require tdmgcc, objdump
-require 'tempfile'
-R /^-disasm\s+(.+)$/m do |match:, **|
-  Tempfile.open(['a-', '.c'], 'tmp') do |f|
-    f.write match[1] + 'main(){}'
-    f.close
-    Tempfile.open(['a-', '.o'], 'tmp') do |o|
-      o.close
-      raw = `2>&1 gcc -c -g -w -O2 -m32 #{f.path.inspect} -o #{o.path.inspect} && objdump -S -M intel #{o.path.inspect}`.encode("UTF-8", "GBK", replace: '?', invalid: :replace, undef: :replace, fallback: '?').chomp("\n")
-      m = raw.match /^Disassembly of section \.text:\s+(.+?)\n\S+?\s\<_main\>/m
-      m ? m[1].gsub("\n\n", "\n").chomp : raw
+require 'http'
+R /^-disasm\s+(?<args>[^\r\n]+)?(\r?\n(?<source>.+))?/m do |match:, **|
+  D {
+    args = match[:source] ? match[:args] : '-m32 -O'
+    source = match[:source] || match[:args]
+    filters = %i[labels intel comments directives demangle]
+    json = JSON.parse HTTP.headers(Accept: 'application/json')
+      .post('https://godbolt.org/api/compiler/cg82/compile', json: {
+        source: source,
+        options: {
+          userArguments: args,
+          filters: filters.map { |e| [e, true] }.to_h
+        }
+      }).to_s
+    if json['code'] == 0
+      json['asm'].map { |e| e['text'] }.join("\n")
+    else
+      json['stderr'].map { |e| e['text'].gsub(/\e\[(?:(?:\d+(?:;\d+)*)?m|K)/, '') }.join("\n")
     end
-  end
+  }
 end
 
 # /deqrcode [pic]

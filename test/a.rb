@@ -4,6 +4,10 @@ def R(cond, &blk)
   $procs[cond] = blk
 end
 
+def D(&blk)
+  blk.call
+end
+
 def T(input)
   $procs.each do |cond, blk|
     m = cond.match input
@@ -12,26 +16,29 @@ def T(input)
 end
 
 :eval
-# -win32const name
-require 'tempfile'
-R /^-win32const\s+(\S+)(?:\s+(\S+))?$/ do |match:, **|
-  Tempfile.open(['a-', '.cpp'], 'tmp') do |f|
-    f.write "#include<#{match[2]}>\n" if match[2]
-    f.write "#define S(s) X(s)\n#define X(s) #s\n#include<windows.h>\n#include<d3d11.h>\n#include<bits/stdc++.h>\nint main(){puts(("" S(#{match[1]})));}"
-    f.close
-    Tempfile.open(['a-', '.exe'], 'tmp') do |o|
-      o.close
-      raw = `2>&1 g++ -w -O -m32 #{f.path.inspect} -o #{o.path.inspect} && #{o.path.inspect}`.encode("UTF-8", "GBK", replace: '?', invalid: :replace, undef: :replace, fallback: '?').chomp("\n")
-      if raw == match[1]
-        open(f,'w'){|g|g.write "#include<windows.h>\n#include<d3d11.h>\n#include<cxxabi.h>\n#include<bits/stdc++.h>\nint main(){int status;char*name=abi::__cxa_demangle(typeid(#{match[1]}).name(),0,0,&status);puts(name);free(name);}"}
-        `2>&1 g++ -w -O -m32 #{f.path.inspect} -o #{o.path.inspect} && #{o.path.inspect}`.encode("UTF-8", "GBK", replace: '?', invalid: :replace, undef: :replace, fallback: '?').chomp("\n")
-      else
-        raw
-      end
+# -disasm add(a,b){return a+b;}
+require 'http'
+R /^-disasm\s+(?<args>[^\r\n]+)?(\r?\n(?<source>.+))?/m do |match:, **|
+  D {
+    args = match[:source] ? match[:args] : '-m32 -O'
+    source = match[:source] || match[:args]
+    filters = %i[labels intel comments directives demangle]
+    json = JSON.parse HTTP.headers(Accept: 'application/json')
+      .post('https://godbolt.org/api/compiler/cg82/compile', json: {
+        source: source,
+        options: {
+          userArguments: args,
+          filters: filters.map { |e| [e, true] }.to_h
+        }
+      }).to_s
+    if json['code'] == 0
+      json['asm'].map { |e| e['text'] }.join("\n")
+    else
+      json['stderr'].map { |e| e['text'].gsub(/\e\[(?:(?:\d+(?:;\d+)*)?m|K)/, '') }.join("\n")
     end
-  end
+  }
 end
 
 T <<-EOS
--win32const SHCNE_ASSOCCHANGED Shlobj.h
+-disasm add(a,b){return a+b;}
 EOS
